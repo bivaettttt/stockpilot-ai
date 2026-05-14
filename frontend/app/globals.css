@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f6f8;
+  --background-elevated: #fbfcfd;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-1: rgba(255, 255, 255, 0.94);
+  --surface-2: #f8fafc;
+  --surface-3: #eef2f7;
+  --surface-muted: #f3f6fa;
+  --surface-inverse: #111827;
+  --border: rgba(15, 23, 42, 0.09);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --line: rgba(15, 23, 42, 0.09);
+  --line-strong: rgba(15, 23, 42, 0.16);
+  --text: #111827;
+  --muted: #667085;
+  --muted-strong: #475467;
+  --accent: #4257c7;
+  --accent-strong: #3344a7;
+  --accent-soft: #eef2ff;
+  --success: #15803d;
+  --success-soft: #dcfce7;
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --danger: #b91c1c;
+  --danger-soft: #fee2e2;
+  --info: #2563eb;
+  --info-soft: #dbeafe;
+  --ring: rgba(66, 87, 199, 0.24);
+  --table-header: #f7f9fc;
+  --table-row-hover: #fafcff;
+  --input-bg: rgba(255, 255, 255, 0.86);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 18px 50px rgba(16, 24, 40, 0.08);
+  --shadow-soft: 0 18px 50px rgba(16, 24, 40, 0.08);
+  --shadow-hard: 0 24px 70px rgba(15, 23, 42, 0.18);
+  --radius-lg: 18px;
+  --radius-panel: 28px;
+  --radius-card: 22px;
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+}
+
+[data-theme="dark"] {
+  --background: #080b10;
+  --background-elevated: #0e131b;
+  --surface: rgba(17, 24, 39, 0.88);
+  --surface-1: rgba(18, 25, 37, 0.94);
+  --surface-2: #121a27;
+  --surface-3: #1b2534;
+  --surface-muted: #151f2d;
+  --surface-inverse: #f8fafc;
+  --border: rgba(226, 232, 240, 0.11);
+  --border-strong: rgba(226, 232, 240, 0.22);
+  --line: rgba(226, 232, 240, 0.12);
+  --line-strong: rgba(226, 232, 240, 0.24);
+  --text: #f8fafc;
+  --muted: #aab5c5;
+  --muted-strong: #d0d7e2;
+  --accent: #91a3ff;
+  --accent-strong: #b7c3ff;
+  --accent-soft: rgba(145, 163, 255, 0.15);
+  --success: #6ee7b7;
+  --success-soft: rgba(16, 185, 129, 0.16);
+  --warning: #fbbf24;
+  --warning-soft: rgba(245, 158, 11, 0.16);
+  --danger: #fb7185;
+  --danger-soft: rgba(244, 63, 94, 0.16);
+  --info: #93c5fd;
+  --info-soft: rgba(59, 130, 246, 0.16);
+  --ring: rgba(145, 163, 255, 0.34);
+  --table-header: #111827;
+  --table-row-hover: #151f2d;
+  --input-bg: rgba(8, 11, 16, 0.42);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 20px 64px rgba(0, 0, 0, 0.36);
+  --shadow-soft: 0 20px 64px rgba(0, 0, 0, 0.36);
+  --shadow-hard: 0 30px 90px rgba(0, 0, 0, 0.55);
+}
+
+html {
+  background: var(--background);
+  color: var(--text);
+  scroll-behavior: smooth;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background:
+    radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 34rem),
+    linear-gradient(180deg, var(--background-elevated), var(--background));
+  color: var(--text);
+  font-family: var(--font-inter), sans-serif;
+  line-height: 1.6;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.surface-panel {
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(22px);
+}
+
+.surface-panel-strong {
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--surface-1) 88%, var(--accent-soft));
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(22px);
+}
+
+code,
+pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+::selection {
+  background: rgba(127, 149, 255, 0.25);
+  color: var(--text);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+button:active {
+  transform: translateY(0.5px);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.28);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--surface-muted) 90%, transparent) 25%,
+    color-mix(in srgb, var(--surface-muted) 40%, transparent) 50%,
+    color-mix(in srgb, var(--surface-muted) 90%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}

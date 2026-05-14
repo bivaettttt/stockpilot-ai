@@ -21,3 +21,4 @@ frontend/.next/
 frontend/.env
 frontend/.env.local
 !frontend/.env.example
+report_*.xlsx
