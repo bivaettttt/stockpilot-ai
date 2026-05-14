@@ -1,0 +1,15 @@
+.venv
+__pycache__
+*.pyc
+.DS_Store
+
+.git
+.gitignore
+
+data/output
+data/uploads
+logs
+
+frontend/node_modules
+frontend/.next
+frontend/.env.local

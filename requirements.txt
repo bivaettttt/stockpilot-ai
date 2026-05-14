@@ -1,0 +1,11 @@
+pandas
+numpy
+openpyxl
+xlsxwriter
+python-dateutil
+fastapi
+uvicorn
+python-multipart
+pytest
+ruff
+httpx
