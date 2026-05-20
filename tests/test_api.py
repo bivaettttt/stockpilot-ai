@@ -1,6 +1,8 @@
 from pathlib import Path
 import json
 import sqlite3
+import zipfile
+import xml.etree.ElementTree as ET
 from io import BytesIO
 from urllib.parse import urlparse
 
@@ -747,7 +749,9 @@ def test_analyze_endpoint_returns_reports_and_csv(tmp_path: Path):
 
     workbook = load_workbook(report_path)
 
+    assert workbook.sheetnames[0] == "Сводка"
     assert "Сводка" in workbook.sheetnames
+    assert "_dashboard_data" in workbook.sheetnames
     assert "Проблемы данных" in workbook.sheetnames
     assert "Надёжность анализа" in workbook.sheetnames
     assert "Закупочный план" in workbook.sheetnames
@@ -755,29 +759,98 @@ def test_analyze_endpoint_returns_reports_and_csv(tmp_path: Path):
     assert "ABC анализ" in workbook.sheetnames
     assert "XYZ анализ" in workbook.sheetnames
     assert "ABC XYZ матрица" in workbook.sheetnames
-    assert len(workbook["Сводка"]._charts) >= 3
+    assert workbook["_dashboard_data"].sheet_state == "hidden"
+    summary_sheet = workbook["Сводка"]
+    assert 2 <= len(getattr(summary_sheet, "_charts", [])) <= 3
+    assert summary_sheet.sheet_view.showGridLines is False
+    assert summary_sheet.sheet_view.zoomScale in (None, 100)
+    assert summary_sheet.sheet_view.selection[0].activeCell == "A1"
+    assert "Главный драйвер выручки" in str(summary_sheet["B7"].value or "")
+    assert "Что сделать в первую очередь" in str(summary_sheet["B18"].value or "")
+    assert "Что проверить вручную" in str(summary_sheet["J18"].value or "")
+    assert summary_sheet["B15"].value == 1
+    assert summary_sheet["B15"].number_format == "0.0%"
+    assert summary_sheet["B15"].value != 0.01
+    reliability_display = str(summary_sheet["D15"].value or "")
+    assert "/100" in reliability_display or "Недостаточно данных" in reliability_display
+    assert "269220.0" not in str(workbook["Сводка"]["B6"].value or "")
+    assert "business-facing" not in str(workbook["Сводка"]["B6"].value or "")
+    assert "ед.." not in str(workbook["Сводка"]["B6"].value or "")
+    assert "единиц.." not in str(workbook["Сводка"]["B6"].value or "")
+    assert "единиц." not in str(workbook["Сводка"]["B6"].value or "")
+    assert "Надёжность прогноза — низкий" not in str(workbook["Сводка"]["B6"].value or "")
+    assert ".." not in str(workbook["Сводка"]["B6"].value or "")
+
+    with zipfile.ZipFile(report_path) as archive:
+        media_files = [name for name in archive.namelist() if name.startswith("xl/media/")]
+        chart_files = [name for name in archive.namelist() if name.startswith("xl/charts/chart")]
+        drawing_files = [name for name in archive.namelist() if name.startswith("xl/drawings/")]
+        worksheet_rels = [name for name in archive.namelist() if name.startswith("xl/worksheets/_rels/")]
+        sheet1_xml = archive.read("xl/worksheets/sheet1.xml").decode("utf-8")
+        assert '<col min="15" max="26"' in sheet1_xml
+        assert 'hidden="1"' in sheet1_xml
+        assert len(media_files) == 0
+        assert 2 <= len(chart_files) <= 3
+        assert len(drawing_files) > 0
+        assert "xl/worksheets/_rels/sheet1.xml.rels" in worksheet_rels
+        for chart_file in chart_files:
+            chart_xml = archive.read(chart_file).decode("utf-8")
+            assert "<c:ser>" in chart_xml
+            assert "<c:f>" in chart_xml
+        sheet2_xml = archive.read("xl/worksheets/sheet2.xml").decode("utf-8")
+        assert '<pane topLeftCell="A1" activePane="bottomLeft" state="frozen"/>' not in sheet2_xml
+        worksheet_xml_files = [
+            name for name in archive.namelist() if name.startswith("xl/worksheets/sheet") and name.endswith(".xml")
+        ]
+        namespace = {"main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+        for worksheet_xml_file in worksheet_xml_files:
+            root = ET.fromstring(archive.read(worksheet_xml_file))
+            for pane in root.findall(".//main:pane", namespace):
+                if pane.attrib.get("state") == "frozen":
+                    assert "xSplit" in pane.attrib or "ySplit" in pane.attrib, worksheet_xml_file
 
     dashboard_html = Path(data["dashboard_path"]).read_text(encoding="utf-8")
     assert "Управленческая сводка" in dashboard_html
-    assert "Продажи и выручка" in dashboard_html
+    assert "Решения на сегодня" in dashboard_html
+    assert "Деньги" in dashboard_html
+    assert dashboard_html.index("Решения на сегодня") < dashboard_html.index("Деньги")
+    assert "Прогноз" in dashboard_html
     assert "Закупочный план" in dashboard_html
-    assert "Надёжность прогноза" in dashboard_html
-    assert "Качество данных" in dashboard_html
+    assert "Риски" in dashboard_html
     assert "ABC/XYZ" in dashboard_html
-    assert "<svg" in dashboard_html
+    assert "Качество данных" in dashboard_html
+    assert "Показать подробную таблицу закупочного плана" in dashboard_html
+    assert "<details" in dashboard_html
+    assert "<th>Причина</th>" not in dashboard_html
+    assert '<details class="details-block">' in dashboard_html
+    assert ".medium { background: #fef3c7; color: #92400e; }" in dashboard_html
+    assert ".high { background: #fee2e2; color: #991b1b; }" in dashboard_html
+    assert "Наблюдать" in dashboard_html
+    assert dashboard_html.count("<svg") >= 6
+    assert "overflow-wrap: anywhere" in dashboard_html
+    assert "meta-value file-name" in dashboard_html
     assert "Executive Summary" not in dashboard_html
     assert "Sales & Revenue" not in dashboard_html
+    assert "Risks" not in dashboard_html
     assert "Procurement Plan" not in dashboard_html
     assert "Forecast Reliability" not in dashboard_html
     assert "Data Quality" not in dashboard_html
     assert "Ollama" not in dashboard_html
+    assert "OpenAI" not in dashboard_html
     assert "no external AI services" not in dashboard_html
     assert "local-first · Ollama" not in dashboard_html
+    assert "business-facing" not in dashboard_html
     assert "Medium приоритет" not in dashboard_html
     assert "exp_smoothing" not in dashboard_html
     assert "moving_average_7" not in dashboard_html
     assert " stable" not in dashboard_html
     assert "269220.0" not in dashboard_html
+    assert ".0 выручки" not in dashboard_html
+    assert "ед.." not in dashboard_html
+    assert "единиц.." not in dashboard_html
+    assert "единиц." not in dashboard_html
+    assert "Надёжность прогноза — низкий" not in dashboard_html
+    assert ".." not in dashboard_html
     assert ">medium<" not in dashboard_html
     assert ">stable<" not in dashboard_html
 
@@ -845,7 +918,11 @@ def test_download_recommendations_csv_endpoint(tmp_path: Path):
     assert "Статус" in download_response.text
     assert "Новая" in download_response.text
     assert "product_name" not in download_response.text
+    assert "business-facing" not in download_response.text
     assert "Medium приоритет" not in download_response.text
+    assert "ед.." not in download_response.text
+    assert "единиц.." not in download_response.text
+    assert "единиц." not in download_response.text
 
 
 def test_download_abc_xyz_matrix_csv_endpoint(tmp_path: Path):
@@ -874,6 +951,7 @@ def test_download_abc_xyz_matrix_csv_endpoint(tmp_path: Path):
     assert "text/csv" in download_response.headers["content-type"]
     assert "Класс ABC/XYZ" in download_response.text
     assert "Действие" in download_response.text
+    assert ".0" not in download_response.text
 
 
 def test_download_recommendations_raw_csv_endpoint(tmp_path: Path):

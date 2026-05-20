@@ -105,6 +105,32 @@ def localize_value(value: Any) -> Any:
     return value
 
 
+def localize_forecast_confidence(value: Any) -> str:
+    """Return a grammatically correct Russian label for forecast confidence."""
+    if value is None:
+        return "нет данных"
+
+    raw = str(value).strip().lower()
+    labels = {
+        "high": "высокая",
+        "medium": "средняя",
+        "low": "низкая",
+        "insufficient_data": "недостаточно данных",
+        "высокий": "высокая",
+        "средний": "средняя",
+        "низкий": "низкая",
+        "высокая": "высокая",
+        "средняя": "средняя",
+        "низкая": "низкая",
+    }
+    if raw in labels:
+        return labels[raw]
+
+    localized = localize_value(value)
+    localized_raw = str(localized).strip().lower()
+    return labels.get(localized_raw, localized_raw or "нет данных")
+
+
 def localize_series(series: pd.Series) -> pd.Series:
     return series.map(localize_value)
 
@@ -179,8 +205,7 @@ def format_integer_text(value: Any) -> str:
 
 
 def build_business_reason(row: pd.Series) -> str:
-    priority = str(localize_value(row.get("priority")) or "Средний")
-    coverage = format_days_text(row.get("stock_days_left")).replace(" дн.", " дня")
+    coverage = format_days_text(row.get("stock_days_left")).replace(" дн.", "")
     risk = format_percent_text(row.get("stockout_risk"))
     qty_value = (
         row.get("final_order_qty")
@@ -192,16 +217,11 @@ def build_business_reason(row: pd.Series) -> str:
     qty_number = to_number(qty_value) or 0
 
     if qty_number > 0:
-        return (
-            f"{priority} приоритет: запасов хватит примерно на {coverage.lower()}, "
-            f"риск дефицита — {risk}. Рекомендуется заказать {format_integer_text(qty_number)} ед."
-        )
+        lead = "Требуется пополнение запаса" if (to_number(row.get("stockout_risk")) or 0) >= 0.6 else "Стоит пополнить запас"
+        return f"{lead}: запаса хватит примерно на {coverage.lower()} дня, риск дефицита {risk}. К заказу {format_integer_text(qty_number)} ед."
 
     overstock = format_percent_text(row.get("overstock_risk"))
-    return (
-        f"{priority} приоритет: активная закупка не требуется. "
-        f"Покрытие — {coverage.lower()}, риск излишка — {overstock}."
-    )
+    return f"Активная закупка не требуется: покрытие {coverage.lower()} дня, риск излишка {overstock}."
 
 
 def build_business_purchase_plan_df(recommendations: pd.DataFrame | None) -> pd.DataFrame:
@@ -350,6 +370,28 @@ def build_abc_xyz_export_df(items: list[dict[str, Any]], *, localized: bool = Tr
     return df
 
 
+def format_abc_xyz_export_for_csv(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    export_df = df.copy()
+    for column in ["Выручка", "Продано, ед."]:
+        if column in export_df.columns:
+            export_df[column] = export_df[column].map(format_integer_text)
+    for column in ["Доля выручки, %", "Накопленная доля, %", "Вариативность спроса, %"]:
+        if column in export_df.columns:
+            export_df[column] = export_df[column].map(format_percent_text)
+    if "Средний спрос в день" in export_df.columns:
+        export_df["Средний спрос в день"] = export_df["Средний спрос в день"].map(
+            lambda value: "Нет данных"
+            if to_number(value) is None
+            else f"{to_number(value):,.1f}".replace(",", " ").replace(".", ",")
+        )
+    export_df["Приоритет"] = export_df["Приоритет"].map(localize_value)
+    export_df["Действие"] = export_df["Действие"].map(shorten_text)
+    return export_df
+
+
 def build_abc_xyz_summary_df(summary: dict[str, Any]) -> pd.DataFrame:
     if not summary:
         return pd.DataFrame(columns=["Класс", "SKU", "Выручка", "Доля выручки, %", "Приоритет", "Действие"])
@@ -381,7 +423,7 @@ def build_reliability_distribution_df(analysis_reliability: dict[str, Any] | Non
 
     return pd.DataFrame(
         {
-            "Надёжность": [localize_value(label) for label in labels],
+            "Надёжность": ["Высокая", "Средняя", "Низкая", "Недостаточно данных"],
             "SKU": [counts[label] for label in labels],
         }
     )
@@ -389,7 +431,7 @@ def build_reliability_distribution_df(analysis_reliability: dict[str, Any] | Non
 
 def build_top_risks_df(recommendations: pd.DataFrame | None, limit: int = 5) -> pd.DataFrame:
     if recommendations is None or recommendations.empty:
-        return pd.DataFrame(columns=["SKU", "Товар", "Приоритет", "Риск", "Действие"])
+        return pd.DataFrame(columns=["SKU", "Товар", "Приоритет", "Риск", "Остаток", "Дней покрытия", "К заказу", "Действие"])
 
     df = recommendations.copy()
     df = df.sort_values(
@@ -402,9 +444,12 @@ def build_top_risks_df(recommendations: pd.DataFrame | None, limit: int = 5) -> 
             "Товар": _series_or_default(df, "product_name", ""),
             "Приоритет": _series_or_default(df, "priority", "").map(localize_value),
             "Риск": pd.to_numeric(_series_or_default(df, "stockout_risk", 0), errors="coerce").fillna(0),
+            "Остаток": pd.to_numeric(_series_or_default(df, "current_stock", 0), errors="coerce").fillna(0),
+            "Дней покрытия": pd.to_numeric(_series_or_default(df, "stock_days_left", 0), errors="coerce").fillna(0),
+            "К заказу": pd.to_numeric(_series_or_default(df, "recommended_order_qty", 0), errors="coerce").fillna(0),
             "Действие": df.apply(
                 lambda row: (
-                    f"Проверьте остаток и закажите {format_quantity_text(row.get('recommended_order_qty')).lower()}."
+                    f"Проверьте остаток и закажите {format_integer_text(row.get('recommended_order_qty'))} ед."
                     if (to_number(row.get("recommended_order_qty")) or 0) > 0
                     else "Проверьте остаток и спрос вручную."
                 ),

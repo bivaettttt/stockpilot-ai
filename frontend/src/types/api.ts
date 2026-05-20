@@ -305,6 +305,7 @@ export type AnalyzeResponse = {
   report_url: string;
   dashboard_url: string;
   recommendations_csv_url: string;
+  recommendations_raw_csv_url?: string | null;
   abc_xyz_matrix_csv_url: string;
 };
 
