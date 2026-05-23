@@ -1,15 +1,15 @@
 # StockPilot AI
 
-Local-first AI workspace для анализа продаж, запасов, прогнозирования и закупочного планирования.
+AI workspace для анализа продаж, запасов, прогнозирования и закупочного планирования.
 
-StockPilot AI помогает локально загрузить CSV/XLSX с продажами и остатками, проверить структуру файла, построить анализ, получить закупочные рекомендации, оценить надёжность прогноза и объяснить результат через локальную Ollama.
+StockPilot AI помогает загрузить CSV/XLSX с продажами и остатками, проверить структуру файла, построить анализ, получить закупочные рекомендации, оценить надёжность прогноза и объяснить результат через YandexGPT по агрегированному контексту анализа.
 
 ## Что умеет
 
 - CSV/XLSX upload
 - Import Wizard
 - column mapping
-- local Ollama Copilot
+- YandexGPT Copilot
 - sales / inventory analytics
 - forecast
 - purchase recommendations
@@ -18,12 +18,13 @@ StockPilot AI помогает локально загрузить CSV/XLSX с �
 - history
 - reports / export
 
-## Local-first принцип
+## Принцип обработки данных и AI
 
-- данные остаются локально;
-- AI работает через Ollama;
-- OpenAI API не используется;
-- внешние AI providers не используются.
+- аналитика считается backend-сервером StockPilot;
+- в YandexGPT отправляется только компактный агрегированный контекст анализа;
+- исходный CSV/XLSX целиком в модель не отправляется;
+- API-ключ YandexGPT хранится только на backend в `.env`;
+- OpenAI API не используется.
 
 ## Требования
 
@@ -32,8 +33,9 @@ StockPilot AI помогает локально загрузить CSV/XLSX с �
 - Node.js 20+  
   Frontend собран на `Next.js 16`, для локального запуска разумный минимум сейчас `Node.js 20`.
 - npm
-- Ollama
-- модель `qwen2.5:7b`
+- Yandex Cloud service account API key
+- `YANDEX_GPT_FOLDER_ID`
+- модель по умолчанию `yandexgpt-5-lite`
 
 ## Установка backend
 
@@ -62,9 +64,14 @@ npm ci
 Корневой `.env`:
 
 ```bash
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen2.5:7b
-OLLAMA_TIMEOUT_SECONDS=60
+AI_PROVIDER=yandex
+YANDEX_GPT_API_KEY=
+YANDEX_GPT_FOLDER_ID=
+YANDEX_GPT_MODEL=yandexgpt-5-lite
+YANDEX_GPT_BASE_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
+YANDEX_GPT_TIMEOUT_SECONDS=30
+YANDEX_GPT_TEMPERATURE=0.2
+YANDEX_GPT_MAX_TOKENS=1200
 ```
 
 Frontend `frontend/.env.local`:
@@ -78,24 +85,14 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 - [/.env.example](/Users/bivaettttt/Desktop/stockpilot-ai/.env.example)
 - [/Users/bivaettttt/Desktop/stockpilot-ai/frontend/.env.example](/Users/bivaettttt/Desktop/stockpilot-ai/frontend/.env.example)
 
-## Запуск Ollama
+## Настройка YandexGPT
 
-Проверить локальные модели:
+Создайте API key для сервисного аккаунта Yandex Cloud и укажите `YANDEX_GPT_API_KEY` и `YANDEX_GPT_FOLDER_ID` в корневом `.env`.
 
-```bash
-ollama list
-```
-
-Если модели нет:
+Проверить статус backend-конфигурации:
 
 ```bash
-ollama pull qwen2.5:7b
-```
-
-Быстрый smoke test:
-
-```bash
-ollama run qwen2.5:7b "Привет"
+curl http://127.0.0.1:8000/system/ai-status
 ```
 
 ## Запуск backend
@@ -116,7 +113,6 @@ npm run dev
 
 - Frontend: [http://localhost:3000](http://localhost:3000)
 - Backend docs: [http://localhost:8000/docs](http://localhost:8000/docs)
-- Ollama: [http://localhost:11434](http://localhost:11434)
 
 ## Проверки
 
@@ -195,8 +191,8 @@ date,sku,product_name,category,quantity_sold,revenue,stock_on_hand,purchase_pric
 - inspect preview до анализа
 - Import Wizard с deterministic mapping
 - normalize + analyze flow
-- локальный Copilot по import flow
-- локальный Copilot по результатам анализа
+- Copilot по import flow через YandexGPT
+- Copilot по результатам анализа через YandexGPT
 - action-first overview
 - закупочный workflow:
   - statuses
@@ -220,7 +216,7 @@ date,sku,product_name,category,quantity_sold,revenue,stock_on_hand,purchase_pric
 
 ## Ограничения текущей версии
 
-- локальный single-user режим;
+- single-user режим;
 - без auth;
 - без SaaS;
 - без cloud sync;
@@ -230,7 +226,7 @@ date,sku,product_name,category,quantity_sold,revenue,stock_on_hand,purchase_pric
 - Copilot отвечает только по переданному контексту;
 - forecasting не гарантирует точность, а показывает reliability metrics;
 - Docker Compose есть как локальный convenience-вариант, но основной рекомендуемый способ запуска сейчас — local dev через `uvicorn` + `npm run dev`;
-- Ollama должна быть запущена отдельно, `docker-compose.yml` её не поднимает.
+- YandexGPT API key настраивается отдельно в `.env` и не попадает во frontend.
 
 ## Makefile
 
@@ -258,11 +254,11 @@ make check-all
 
 Что важно:
 
-- Compose не поднимает Ollama.
+- Compose не настраивает YandexGPT credentials.
 - Основной рекомендуемый запуск сейчас — вручную:
   - backend через `uvicorn`
   - frontend через `npm run dev`
-  - Ollama отдельно локально
+  - YandexGPT credentials в `.env`
 
 ## Roadmap
 

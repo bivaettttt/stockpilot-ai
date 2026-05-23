@@ -73,7 +73,7 @@ export default function CopilotPage() {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Локальный AI-помощник недоступен. Проверьте Ollama и локальный сервер."
+          : "AI-помощник недоступен. Проверьте настройки YandexGPT и backend."
       );
     } finally {
       setIsLoading(false);
@@ -83,7 +83,7 @@ export default function CopilotPage() {
   if (!hasAnalysis) {
     return (
       <div className="space-y-6">
-        <PageTitle title="Copilot" description="Локальный AI-помощник по текущему анализу." />
+        <PageTitle title="Copilot" description="AI-помощник по текущему анализу." />
         <Surface className="p-6 md:p-7">
           <div className="space-y-4">
             <div className="inline-flex items-center gap-2 rounded-md bg-[color:var(--surface-muted)] px-3 py-1.5 text-sm text-[color:var(--muted)]">
@@ -93,7 +93,7 @@ export default function CopilotPage() {
             <div className="space-y-2">
               <h2 className="text-2xl font-semibold">Copilot появится после анализа</h2>
               <p className="max-w-2xl text-sm leading-6 text-[color:var(--muted)]">
-                Загрузите файл продаж и остатков, чтобы локальный AI-помощник мог объяснить рекомендации, риски и надёжность прогноза.
+                Загрузите файл продаж и остатков, чтобы AI-помощник мог объяснить рекомендации, риски и надёжность прогноза.
               </p>
             </div>
             <div className="flex flex-wrap gap-2.5">
@@ -123,11 +123,11 @@ export default function CopilotPage() {
           <div className="border-b border-[color:var(--line)] p-6 lg:border-b-0 lg:border-r">
             <div className="inline-flex items-center gap-2 rounded-full bg-[color:var(--accent-soft)] px-3 py-1.5 text-sm text-[color:var(--accent)]">
               <Bot className="h-4 w-4" />
-              Локальный Copilot
+              AI Copilot
             </div>
             <h2 className="mt-4 text-3xl font-semibold leading-tight">Спросите по текущему анализу</h2>
             <p className="mt-3 text-sm leading-6 text-[color:var(--muted)]">
-              Ответ формируется локально через Ollama. Copilot не меняет закупочный план и отвечает только на основе переданного контекста.
+              AI-пояснения формируются по агрегированному контексту анализа. Copilot не меняет закупочный план и не получает полный исходный файл.
             </p>
             {dashboard.isHistoryAnalysis && dashboard.activeAnalysisCreatedAt ? (
               <p className="mt-3 rounded-2xl border border-[color:var(--line)] bg-[color:var(--surface-2)] px-4 py-3 text-sm text-[color:var(--muted)]">
@@ -138,7 +138,7 @@ export default function CopilotPage() {
           <div>
             <div className="p-6">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">Статус Ollama:</span>
+                <span className="font-medium">Статус AI:</span>
                 <span
                   className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                     statusQuery.data?.available
@@ -146,14 +146,14 @@ export default function CopilotPage() {
                       : "bg-[color:var(--warning-soft)] text-[color:var(--warning)]"
                   }`}
                 >
-                  {statusQuery.data?.available ? "Доступна" : "Проверка нужна"}
+                  {statusQuery.data?.available ? "Подключён" : statusQuery.data?.configured ? "Проверка нужна" : "Не настроен"}
                 </span>
               </div>
               <p className="mt-2 break-words text-sm text-[color:var(--muted)]">
                 {statusQuery.data?.message ??
                   (statusQuery.isLoading
-                    ? "Проверяем подключение к Ollama."
-                    : "Не удалось получить статус Copilot. Проверьте сервер и Ollama.")}
+                    ? "Проверяем подключение к YandexGPT."
+                    : "Не удалось получить статус Copilot. Проверьте backend и настройки YandexGPT.")}
               </p>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <ContextPill label="Файл" value={dashboard.activeAnalysisFilename ?? "текущий анализ"} />
@@ -224,7 +224,7 @@ export default function CopilotPage() {
               <span>•</span>
               <span>{answer.model}</span>
               <span>•</span>
-              <span>локально</span>
+              <span>агрегированный контекст</span>
             </div>
             <div className="prose prose-sm max-w-none whitespace-normal text-[color:var(--text)] prose-p:leading-6 prose-strong:text-[color:var(--text)]">
               <ReactMarkdown>{answer.answer}</ReactMarkdown>

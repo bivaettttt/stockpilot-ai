@@ -15,8 +15,9 @@ from src.api import history as history_api_module
 from src.api import procurement as procurement_api_module
 from src.api.main import app
 from src.api.routers import copilot as copilot_router_module
+from src.config import AIConfig
 from src.services.copilot_context import build_analysis_assist_context, build_import_assist_context
-from src.services.ollama_client import OllamaClientError
+from src.services.yandex_gpt_client import YandexGPTClient, YandexGPTClientError, YandexGPTStatus
 
 client = TestClient(app)
 
@@ -424,11 +425,11 @@ def test_import_wizard_rejects_unsupported_file_type(tmp_path: Path):
     assert response.status_code == 400
 
 
-def test_import_assist_endpoint_returns_mocked_ollama_response(monkeypatch: pytest.MonkeyPatch):
+def test_import_assist_endpoint_returns_mocked_yandex_response(monkeypatch: pytest.MonkeyPatch):
     async def fake_generate_import_assist_answer(question: str, context: dict[str, object]) -> tuple[str, str]:
         assert question == "Что не так с моим файлом?"
         assert context["filename"] == "sales_ru.csv"
-        return ("Нужно проверить колонку «Остаток».", "qwen2.5:7b")
+        return ("Нужно проверить колонку «Остаток».", "yandexgpt-5-lite")
 
     monkeypatch.setattr(
         copilot_router_module,
@@ -454,15 +455,15 @@ def test_import_assist_endpoint_returns_mocked_ollama_response(monkeypatch: pyte
     assert response.status_code == 200
     data = response.json()
     assert data["answer"] == "Нужно проверить колонку «Остаток»."
-    assert data["model"] == "qwen2.5:7b"
-    assert data["provider"] == "ollama"
-    assert data["is_local"] is True
+    assert data["model"] == "yandexgpt-5-lite"
+    assert data["provider"] == "yandex"
+    assert data["is_local"] is False
     assert data["fallback"] is False
 
 
-def test_import_assist_endpoint_returns_fallback_when_ollama_unavailable(monkeypatch: pytest.MonkeyPatch):
+def test_import_assist_endpoint_returns_fallback_when_yandex_unavailable(monkeypatch: pytest.MonkeyPatch):
     async def fake_generate_import_assist_answer(question: str, context: dict[str, object]) -> tuple[str, str]:
-        raise OllamaClientError("unavailable")
+        raise YandexGPTClientError("not_configured")
 
     monkeypatch.setattr(
         copilot_router_module,
@@ -481,14 +482,14 @@ def test_import_assist_endpoint_returns_fallback_when_ollama_unavailable(monkeyp
     assert response.status_code == 200
     data = response.json()
     assert data["fallback"] is True
-    assert "Локальный AI-помощник сейчас недоступен" in data["answer"]
-    assert data["provider"] == "ollama"
-    assert data["error_code"] == "unavailable"
+    assert "YANDEX_GPT_API_KEY" in data["answer"]
+    assert data["provider"] == "yandex"
+    assert data["error_code"] == "not_configured"
 
 
 def test_import_assist_does_not_require_openai_config(monkeypatch: pytest.MonkeyPatch):
     async def fake_generate_import_assist_answer(question: str, context: dict[str, object]) -> tuple[str, str]:
-        return ("Контекст получен локально.", "qwen2.5:7b")
+        return ("Контекст получен.", "yandexgpt-5-lite")
 
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setattr(
@@ -539,20 +540,19 @@ def test_import_assist_context_builder_keeps_context_compact():
     assert context["filename"] == "sales_ru.csv"
 
 
-def test_import_assist_system_prompt_has_local_only_rules():
+def test_import_assist_system_prompt_has_no_fabrication_rules():
     prompt = copilot_router_module.build_import_assist_system_prompt()
 
-    assert "Ты отвечаешь только на основе переданного контекста" in prompt
+    assert "Отвечай только по переданному агрегированному контексту анализа" in prompt
     assert "Ты не выдумываешь колонки, значения, метрики или выводы" in prompt
     assert "Не упоминай OpenAI" in prompt
-    assert "Не предлагай внешние AI-сервисы" in prompt
 
 
-def test_analysis_assist_endpoint_returns_mocked_ollama_response(monkeypatch: pytest.MonkeyPatch):
+def test_analysis_assist_endpoint_returns_mocked_yandex_response(monkeypatch: pytest.MonkeyPatch):
     async def fake_generate_analysis_assist_answer(question: str, context: dict[str, object]) -> tuple[str, str]:
         assert question == "Что нужно сделать в первую очередь?"
         assert context["stage"] == "analysis"
-        return ("Сначала проверьте SKU с высоким риском дефицита.", "qwen2.5:7b")
+        return ("Сначала проверьте SKU с высоким риском дефицита.", "yandexgpt-5-lite")
 
     monkeypatch.setattr(
         copilot_router_module,
@@ -575,12 +575,14 @@ def test_analysis_assist_endpoint_returns_mocked_ollama_response(monkeypatch: py
     assert response.status_code == 200
     data = response.json()
     assert data["answer"] == "Сначала проверьте SKU с высоким риском дефицита."
+    assert data["provider"] == "yandex"
+    assert data["is_local"] is False
     assert data["fallback"] is False
 
 
-def test_analysis_assist_endpoint_returns_fallback_when_ollama_unavailable(monkeypatch: pytest.MonkeyPatch):
+def test_analysis_assist_endpoint_returns_fallback_when_yandex_unavailable(monkeypatch: pytest.MonkeyPatch):
     async def fake_generate_analysis_assist_answer(question: str, context: dict[str, object]) -> tuple[str, str]:
-        raise OllamaClientError("timeout")
+        raise YandexGPTClientError("timeout")
 
     monkeypatch.setattr(
         copilot_router_module,
@@ -600,56 +602,76 @@ def test_analysis_assist_endpoint_returns_fallback_when_ollama_unavailable(monke
     assert data["error_code"] == "timeout"
 
 
-def test_copilot_status_endpoint_returns_available_status(monkeypatch: pytest.MonkeyPatch):
-    async def fake_get_status(self):
-        return (True, "Ollama доступна, модель qwen2.5:7b готова.", None)
+def test_yandex_model_uri_uses_folder_id_for_short_model():
+    client_instance = YandexGPTClient(
+        AIConfig(
+            yandex_gpt_api_key="secret-key",
+            yandex_gpt_folder_id="folder-123",
+            yandex_gpt_model="yandexgpt-5-lite",
+        )
+    )
 
-    monkeypatch.setattr("src.services.ollama_client.OllamaClient.get_status", fake_get_status)
+    assert client_instance.model_uri == "gpt://folder-123/yandexgpt-5-lite"
+
+
+def test_yandex_model_uri_accepts_full_uri():
+    client_instance = YandexGPTClient(
+        AIConfig(
+            yandex_gpt_api_key="secret-key",
+            yandex_gpt_folder_id=None,
+            yandex_gpt_model="gpt://custom-folder/yandexgpt-5-lite",
+        )
+    )
+
+    assert client_instance.model_uri == "gpt://custom-folder/yandexgpt-5-lite"
+    assert client_instance.is_configured() is True
+
+
+def test_copilot_status_endpoint_returns_not_configured_without_secret(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("YANDEX_GPT_API_KEY", raising=False)
+    monkeypatch.delenv("YANDEX_GPT_FOLDER_ID", raising=False)
 
     response = client.get("/copilot/status")
 
     assert response.status_code == 200
     data = response.json()
-    assert data["provider"] == "ollama"
-    assert data["is_local"] is True
+    assert data["provider"] == "yandex"
+    assert data["is_local"] is False
+    assert data["uses_external_ai"] is True
+    assert data["configured"] is False
+    assert data["available"] is False
+    assert data["error_code"] == "not_configured"
+    assert "YANDEX_GPT_API_KEY" in data["message"]
+    assert "secret" not in json.dumps(data)
+
+
+def test_system_ai_status_endpoint_returns_available_status(monkeypatch: pytest.MonkeyPatch):
+    async def fake_healthcheck(self):
+        return YandexGPTStatus(
+            configured=True,
+            available=True,
+            model="yandexgpt-5-lite",
+            message="YandexGPT подключён.",
+        )
+
+    monkeypatch.setenv("YANDEX_GPT_API_KEY", "secret-api-key")
+    monkeypatch.setenv("YANDEX_GPT_FOLDER_ID", "folder-123")
+    monkeypatch.setattr("src.services.yandex_gpt_client.YandexGPTClient.healthcheck", fake_healthcheck)
+
+    response = client.get("/system/ai-status")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "yandex"
+    assert data["configured"] is True
     assert data["available"] is True
-    assert data["model"] == "qwen2.5:7b"
-    assert data["error_code"] is None
-
-
-def test_copilot_status_endpoint_returns_missing_model_state(monkeypatch: pytest.MonkeyPatch):
-    async def fake_get_status(self):
-        return (False, "Модель qwen2.5:7b не найдена в локальной Ollama.", "missing_model")
-
-    monkeypatch.setattr("src.services.ollama_client.OllamaClient.get_status", fake_get_status)
-
-    response = client.get("/copilot/status")
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["available"] is False
-    assert data["error_code"] == "missing_model"
-    assert "не найдена" in data["message"]
-
-
-def test_copilot_status_endpoint_handles_unavailable_ollama(monkeypatch: pytest.MonkeyPatch):
-    async def fake_get_status(self):
-        raise OllamaClientError("unavailable")
-
-    monkeypatch.setattr("src.services.ollama_client.OllamaClient.get_status", fake_get_status)
-
-    response = client.get("/copilot/status")
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["available"] is False
-    assert data["error_code"] == "unavailable"
-    assert "Ollama запущена" in data["message"]
+    assert data["model"] == "yandexgpt-5-lite"
+    assert "secret-api-key" not in json.dumps(data)
 
 
 def test_analysis_assist_does_not_require_openai_config(monkeypatch: pytest.MonkeyPatch):
     async def fake_generate_analysis_assist_answer(question: str, context: dict[str, object]) -> tuple[str, str]:
-        return ("Контекст анализа получен локально.", "qwen2.5:7b")
+        return ("Контекст анализа получен.", "yandexgpt-5-lite")
 
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setattr(
@@ -693,10 +715,10 @@ def test_analysis_assist_context_builder_limits_arrays_and_keeps_warnings():
     assert context["selected_sku"]["sku"] == "COF-001"
 
 
-def test_analysis_assist_system_prompt_has_local_only_rules():
+def test_analysis_assist_system_prompt_has_no_fabrication_rules():
     prompt = copilot_router_module.build_analysis_assist_system_prompt()
 
-    assert "Отвечай только на основе переданного контекста" in prompt
+    assert "Отвечай только по переданному агрегированному контексту анализа" in prompt
     assert "Не выдумывай SKU, цифры, метрики, поставщиков, прогнозы или рекомендации" in prompt
     assert "Если forecast confidence низкий, обязательно упомяни это" in prompt
     assert "Не упоминай OpenAI" in prompt
@@ -837,6 +859,8 @@ def test_analyze_endpoint_returns_reports_and_csv(tmp_path: Path):
     assert "Data Quality" not in dashboard_html
     assert "Ollama" not in dashboard_html
     assert "OpenAI" not in dashboard_html
+    assert "YandexGPT API key" not in dashboard_html
+    assert "YANDEX_GPT_API_KEY" not in dashboard_html
     assert "no external AI services" not in dashboard_html
     assert "local-first · Ollama" not in dashboard_html
     assert "business-facing" not in dashboard_html

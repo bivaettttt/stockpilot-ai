@@ -310,9 +310,10 @@ export type AnalyzeResponse = {
 };
 
 export type CopilotStatusResponse = {
-  provider: "ollama" | string;
+  provider: "yandex" | string;
   is_local: boolean;
-  base_url: string;
+  uses_external_ai: boolean;
+  configured: boolean;
   model: string;
   available: boolean;
   message: string;
@@ -561,7 +562,7 @@ export type ImportAssistContext = {
 export type ImportAssistResponse = {
   answer: string;
   model: string;
-  provider: "ollama" | string;
+  provider: "yandex" | string;
   is_local: boolean;
   fallback: boolean;
   error_code?: string | null;

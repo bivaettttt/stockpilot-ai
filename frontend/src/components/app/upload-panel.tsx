@@ -165,7 +165,7 @@ export function UploadPanel() {
       setCopilotError(
         error instanceof Error
           ? error.message
-          : "Локальный AI-помощник недоступен. Проверьте, что Ollama запущена и модель qwen2.5:7b установлена."
+          : "AI-помощник недоступен. Проверьте настройки YandexGPT на backend."
       );
     } finally {
       setIsCopilotLoading(false);
@@ -542,7 +542,7 @@ function ImportAssistCard({
           <Bot className="h-4 w-4 text-[color:var(--muted)]" />
           <p className="text-sm font-semibold">AI-помощник по файлу</p>
         </div>
-        <p className="text-sm text-[color:var(--muted)]">Ответ формируется локально через Ollama.</p>
+        <p className="text-sm text-[color:var(--muted)]">Ответ формируется по компактному контексту файла. Полный файл в модель не отправляется.</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -595,7 +595,7 @@ function ImportAssistCard({
             {answer.fallback ? (
               <>
                 <span>•</span>
-                <span>Локальный AI-помощник недоступен</span>
+                <span>AI-помощник недоступен</span>
               </>
             ) : null}
           </div>
@@ -804,7 +804,7 @@ function MappingWizard({
       </div>
 
       <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-muted)] p-4 text-sm text-[color:var(--muted)]">
-        Если нужная колонка не найдена автоматически, выберите её вручную. Локальный помощник по файлу может объяснить ошибки проверки и подсказать, что исправить.
+        Если нужная колонка не найдена автоматически, выберите её вручную. AI-помощник по файлу может объяснить ошибки проверки и подсказать, что исправить.
       </div>
     </div>
   );

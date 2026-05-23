@@ -170,7 +170,7 @@ export function AppShell({ children }: PropsWithChildren) {
                         statusQuery.data?.available ? "bg-[color:var(--success)]" : "bg-[color:var(--warning)]"
                       )}
                     />
-                    {statusQuery.data?.available ? t("shell.ollama_online") : t("shell.ollama_check")}
+                    {statusQuery.data?.available ? t("shell.ai_online") : t("shell.ai_check")}
                   </div>
                   <button
                     className="hidden h-10 items-center gap-2 rounded-2xl border border-[color:var(--line)] bg-[color:var(--surface)] px-3 text-sm text-[color:var(--muted)] md:flex"

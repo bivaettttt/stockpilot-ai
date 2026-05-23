@@ -22,7 +22,11 @@ from src.config import AppConfig
 from src.load_data import load_sales_data
 from src.logger import setup_logger
 from src.pipeline import DataValidationError, run_stockpilot_pipeline
-from src.report_presenter import build_abc_xyz_export_df, build_business_purchase_plan_export_df
+from src.report_presenter import (
+    build_abc_xyz_export_df,
+    build_business_purchase_plan_export_df,
+    format_abc_xyz_export_for_csv,
+)
 from src.validate_data import (
     OPTIONAL_COLUMNS,
     REQUIRED_COLUMNS,
@@ -276,5 +280,5 @@ async def analyze_file(
 
 
 def _export_abc_xyz_matrix_csv(file_path: Path, matrix: list[dict[str, Any]]) -> None:
-    df = build_abc_xyz_export_df(matrix, localized=True)
+    df = format_abc_xyz_export_for_csv(build_abc_xyz_export_df(matrix, localized=True))
     df.to_csv(file_path, index=False, encoding="utf-8-sig")

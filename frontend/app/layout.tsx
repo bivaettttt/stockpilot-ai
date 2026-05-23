@@ -17,7 +17,7 @@ const appFont = Inter({
 export const metadata: Metadata = {
   title: "StockPilot AI",
   description:
-    "Локальное AI-рабочее пространство для продаж, запасов, прогнозирования и закупок.",
+    "AI-рабочее пространство для продаж, запасов, прогнозирования и закупок.",
 };
 
 export default function RootLayout({

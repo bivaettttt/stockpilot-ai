@@ -339,16 +339,17 @@ class ImportAssistRequest(BaseModel):
 class ImportAssistResponse(BaseModel):
     answer: str
     model: str
-    provider: str = "ollama"
-    is_local: bool = True
+    provider: str = "yandex"
+    is_local: bool = False
     fallback: bool = False
     error_code: str | None = None
 
 
 class CopilotStatusResponse(BaseModel):
-    provider: str = "ollama"
-    is_local: bool = True
-    base_url: str
+    provider: str = "yandex"
+    is_local: bool = False
+    uses_external_ai: bool = True
+    configured: bool = False
     model: str
     available: bool
     message: str

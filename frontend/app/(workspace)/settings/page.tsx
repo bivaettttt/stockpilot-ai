@@ -51,7 +51,7 @@ export default function SettingsPage() {
   }
 
   const apiAvailable = healthQuery.data?.status === "ok";
-  const ollamaStatus = statusQuery.data;
+  const aiStatus = statusQuery.data;
 
   return (
     <div className="space-y-7">
@@ -59,8 +59,8 @@ export default function SettingsPage() {
         title={locale === "ru" ? "Настройки" : "Settings"}
         description={
           locale === "ru"
-            ? "Локальные параметры интерфейса и диагностика сервера/Ollama."
-            : "Local interface preferences and backend/Ollama diagnostics."
+            ? "Параметры интерфейса, сервера и AI-провайдера."
+            : "Interface, backend, and AI provider diagnostics."
         }
       />
 
@@ -72,12 +72,12 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2">
               <h2 className="text-lg font-semibold">
-                {locale === "ru" ? "Локальный режим" : "Local-first mode"}
+                {locale === "ru" ? "Режим обработки данных" : "Data processing mode"}
               </h2>
               <p className="max-w-2xl text-sm leading-6 text-[color:var(--muted)]">
                 {locale === "ru"
-                  ? "Данные и AI-ответы обрабатываются локально через сервер и Ollama. Внешние AI-провайдеры не используются."
-                  : "Data and AI responses are processed locally through the backend and Ollama. External AI providers are not used."}
+                  ? "Аналитика строится сервером StockPilot. AI-помощник получает только агрегированный контекст анализа, а API-ключ хранится на сервере в .env и не передаётся в браузер."
+                  : "Analytics are calculated by the StockPilot backend. The AI assistant receives only aggregated analysis context, and the API key stays on the server in .env."}
               </p>
             </div>
           </div>
@@ -94,15 +94,21 @@ export default function SettingsPage() {
             />
             <StatusRow
               icon={<Bot className="h-4 w-4" />}
-              label="Ollama"
-              value={ollamaStatus?.message ?? (statusQuery.isLoading ? (locale === "ru" ? "Проверяем..." : "Checking...") : locale === "ru" ? "Нет ответа" : "No response")}
-              state={ollamaStatus?.available ? "ok" : "warn"}
+              label="AI provider"
+              value={aiStatus?.message ?? (statusQuery.isLoading ? (locale === "ru" ? "Проверяем..." : "Checking...") : locale === "ru" ? "Нет ответа" : "No response")}
+              state={aiStatus?.available ? "ok" : "warn"}
             />
             <StatusRow
               icon={<CheckCircle2 className="h-4 w-4" />}
               label={locale === "ru" ? "Текущая модель" : "Current model"}
-              value={ollamaStatus?.model ?? "qwen2.5:7b"}
+              value={aiStatus?.model ?? "yandexgpt-5-lite"}
               state="neutral"
+            />
+            <StatusRow
+              icon={<ShieldCheck className="h-4 w-4" />}
+              label={locale === "ru" ? "Провайдер" : "Provider"}
+              value={aiStatus?.provider === "yandex" ? "YandexGPT" : (aiStatus?.provider ?? "YandexGPT")}
+              state={aiStatus?.configured ? "ok" : "warn"}
             />
           </div>
         </Surface>
@@ -146,12 +152,12 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-base font-semibold">
-              {locale === "ru" ? "Проверка подключения Ollama" : "Ollama connectivity check"}
+              {locale === "ru" ? "Проверка подключения YandexGPT" : "YandexGPT connectivity check"}
             </h2>
             <p className="mt-1 text-sm text-[color:var(--muted)]">
               {locale === "ru"
-                ? "Используйте кнопку, чтобы обновить статус локального AI-помощника."
-                : "Use the button to refresh the local AI assistant status."}
+                ? "Используйте кнопку, чтобы обновить статус AI-провайдера. API-ключ остаётся только на backend."
+                : "Use the button to refresh the AI provider status. The API key remains on the backend."}
             </p>
           </div>
           <UiButton
@@ -160,7 +166,7 @@ export default function SettingsPage() {
             leadingIcon={<RefreshCw className="h-4 w-4" />}
             loading={statusQuery.isFetching}
           >
-            {locale === "ru" ? "Проверить Ollama" : "Check Ollama"}
+            {locale === "ru" ? "Проверить YandexGPT" : "Check YandexGPT"}
           </UiButton>
         </div>
       </Surface>

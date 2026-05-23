@@ -14,13 +14,9 @@ from src.api.schemas import (
     ImportAssistResponse,
 )
 from src.logger import setup_logger
+from src.services.ai_provider import NOT_CONFIGURED_MESSAGE, get_ai_provider
 from src.services.copilot_context import build_analysis_assist_context, build_import_assist_context
-from src.services.ollama_client import (
-    DEFAULT_OLLAMA_MODEL,
-    OllamaClient,
-    OllamaClientError,
-    get_ollama_settings,
-)
+from src.services.yandex_gpt_client import YandexGPTClientError
 
 router = APIRouter(tags=["Copilot"])
 logger = setup_logger()
@@ -70,28 +66,26 @@ async def copilot_stream(payload: CopilotStreamRequest) -> StreamingResponse:
 
 def build_import_assist_system_prompt() -> str:
     return (
-        "Ты — локальный AI-помощник StockPilot AI.\n"
+        "Ты Copilot StockPilot AI.\n"
         "Ты помогаешь пользователю подготовить CSV/XLSX файл для анализа продаж и остатков.\n"
-        "Ты отвечаешь только на основе переданного контекста.\n"
+        "Отвечай только по переданному агрегированному контексту анализа.\n"
         "Ты не выдумываешь колонки, значения, метрики или выводы.\n"
-        "Если данных недостаточно, прямо скажи, чего не хватает.\n"
+        "Если данных нет, скажи, что в текущем анализе этого нет.\n"
         "Ты не меняешь файл и не подтверждаешь mapping за пользователя.\n"
-        "Объясняй простым русским языком для владельца бизнеса или закупщика.\n"
-        "Давай короткие практические рекомендации.\n"
+        "Пиши по-русски, коротко, управленчески, с конкретными действиями.\n"
         "Не обещай точность прогноза.\n"
         "Не упоминай OpenAI.\n"
-        "Не предлагай внешние AI-сервисы.\n"
-        "Используй только локальный контекст, который передан в запросе."
+        "Не отправляй пользователя к внешним AI-сервисам."
     )
 
 
 def build_analysis_assist_system_prompt() -> str:
     return (
-        "Ты — локальный AI-помощник StockPilot AI.\n"
+        "Ты Copilot StockPilot AI.\n"
         "Ты помогаешь объяснять анализ продаж, запасов, прогнозов и закупочных рекомендаций.\n"
-        "Отвечай только на основе переданного контекста.\n"
+        "Отвечай только по переданному агрегированному контексту анализа.\n"
         "Не выдумывай SKU, цифры, метрики, поставщиков, прогнозы или рекомендации.\n"
-        "Если данных недостаточно, прямо скажи, чего не хватает.\n"
+        "Если данных нет, скажи, что в текущем анализе этого нет.\n"
         "Не обещай точность прогноза и не используй слово 'точность' как гарантию результата.\n"
         "Не используй формулировки вроде 'гарантированно', 'точно', '97% accuracy'.\n"
         "Трактуй confidence аккуратно: high — высокая надёжность, medium — средняя надёжность, "
@@ -102,11 +96,9 @@ def build_analysis_assist_system_prompt() -> str:
         "Если есть warnings по stockout, promo или insufficient history, учитывай их в ответе.\n"
         "Не меняй закупочный план сам.\n"
         "Не подтверждай решения за пользователя.\n"
-        "Давай практичные следующие шаги.\n"
-        "Отвечай простым русским языком для владельца бизнеса, закупщика или операционного менеджера.\n"
+        "Пиши по-русски, коротко, управленчески, с конкретными действиями.\n"
         "Не упоминай OpenAI.\n"
-        "Не предлагай внешние AI-сервисы.\n"
-        "Используй только локальный контекст, который передан в запросе."
+        "Не отправляй пользователя к внешним AI-сервисам."
     )
 
 
@@ -121,13 +113,12 @@ def build_import_assist_prompt(*, question: str, context: dict[str, object]) -> 
 
 
 async def generate_import_assist_answer(question: str, context: dict[str, object]) -> tuple[str, str]:
-    settings = get_ollama_settings()
-    client = OllamaClient(settings)
-    answer = await client.generate(
-        prompt=build_import_assist_prompt(question=question, context=context),
+    provider = get_ai_provider()
+    answer = await provider.complete(
+        user_prompt=build_import_assist_prompt(question=question, context=context),
         system_prompt=build_import_assist_system_prompt(),
     )
-    return answer, settings.model
+    return answer, provider.model
 
 
 def build_analysis_assist_prompt(*, question: str, context: dict[str, object]) -> str:
@@ -141,36 +132,22 @@ def build_analysis_assist_prompt(*, question: str, context: dict[str, object]) -
 
 
 async def generate_analysis_assist_answer(question: str, context: dict[str, object]) -> tuple[str, str]:
-    settings = get_ollama_settings()
-    client = OllamaClient(settings)
-    answer = await client.generate(
-        prompt=build_analysis_assist_prompt(question=question, context=context),
+    provider = get_ai_provider()
+    answer = await provider.complete(
+        user_prompt=build_analysis_assist_prompt(question=question, context=context),
         system_prompt=build_analysis_assist_system_prompt(),
     )
-    return answer, settings.model
+    return answer, provider.model
 
 
-def _message_for_ollama_error(error_code: str | None) -> str:
-    settings = get_ollama_settings()
-    if error_code == "missing_model":
-        return (
-            "Локальный AI-помощник сейчас недоступен: модель "
-            f"{settings.model} не найдена. Проверьте Ollama и загрузите модель."
-        )
+def _message_for_provider_error(error_code: str | None) -> str:
+    if error_code == "not_configured":
+        return NOT_CONFIGURED_MESSAGE
     if error_code == "timeout":
-        return (
-            "Локальный AI-помощник не ответил вовремя. Проверьте, что Ollama запущена "
-            f"и модель {settings.model} отвечает без задержки."
-        )
-    if error_code == "unavailable":
-        return (
-            "Локальный AI-помощник сейчас недоступен. Проверьте, что Ollama запущена "
-            f"и модель {settings.model} установлена."
-        )
-    return (
-        "Локальный AI-помощник сейчас недоступен. Проверьте, что Ollama запущена "
-        f"и модель {settings.model} установлена."
-    )
+        return "AI-помощник не ответил вовремя. Проверьте доступ к YandexGPT и повторите запрос."
+    if error_code and error_code.startswith("http_"):
+        return "AI-помощник сейчас недоступен: YandexGPT вернул ошибку. Проверьте настройки ключа и каталога."
+    return "AI-помощник сейчас недоступен. Проверьте настройки YandexGPT в .env."
 
 
 def _fallback_import_assist_response(
@@ -178,10 +155,12 @@ def _fallback_import_assist_response(
     *,
     error_code: str | None = None,
 ) -> ImportAssistResponse:
-    settings = get_ollama_settings()
+    provider = get_ai_provider()
     return ImportAssistResponse(
-        answer=message or _message_for_ollama_error(error_code),
-        model=settings.model,
+        answer=message or _message_for_provider_error(error_code),
+        model=provider.model,
+        provider=provider.provider,
+        is_local=False,
         fallback=True,
         error_code=error_code,
     )
@@ -192,10 +171,12 @@ def _fallback_analysis_assist_response(
     *,
     error_code: str | None = None,
 ) -> ImportAssistResponse:
-    settings = get_ollama_settings()
+    provider = get_ai_provider()
     return ImportAssistResponse(
-        answer=message or _message_for_ollama_error(error_code),
-        model=settings.model,
+        answer=message or _message_for_provider_error(error_code),
+        model=provider.model,
+        provider=provider.provider,
+        is_local=False,
         fallback=True,
         error_code=error_code,
     )
@@ -203,34 +184,31 @@ def _fallback_analysis_assist_response(
 
 @router.get("/copilot/status", response_model=CopilotStatusResponse)
 async def copilot_status() -> CopilotStatusResponse:
-    settings = get_ollama_settings()
-    client = OllamaClient(settings)
-
     try:
-        available, message, error_code = await client.get_status()
+        provider = get_ai_provider()
+        status = await provider.status()
         return CopilotStatusResponse(
-            base_url=settings.base_url,
-            model=settings.model,
-            available=available,
-            message=message,
-            error_code=error_code,
-        )
-    except OllamaClientError as error:
-        return CopilotStatusResponse(
-            base_url=settings.base_url,
-            model=settings.model,
-            available=False,
-            message=_message_for_ollama_error(str(error)),
-            error_code=str(error),
+            provider=status.provider,
+            is_local=False,
+            uses_external_ai=status.uses_external_ai,
+            configured=status.configured,
+            model=status.model,
+            available=status.available,
+            message=status.message,
+            error_code=status.error_code,
         )
     except Exception:
         logger.exception("Copilot status failed unexpectedly")
+        provider = get_ai_provider()
         return CopilotStatusResponse(
-            base_url=settings.base_url,
-            model=settings.model,
+            provider=provider.provider,
+            is_local=False,
+            uses_external_ai=True,
+            configured=provider.is_configured(),
+            model=provider.model,
             available=False,
-            message=_message_for_ollama_error("unavailable"),
-            error_code="unavailable",
+            message=_message_for_provider_error("provider_unavailable"),
+            error_code="provider_unavailable",
         )
 
 
@@ -243,9 +221,11 @@ async def copilot_import_assist(payload: ImportAssistRequest) -> ImportAssistRes
         return ImportAssistResponse(
             answer=answer,
             model=model,
+            provider="yandex",
+            is_local=False,
             fallback=False,
         )
-    except OllamaClientError as error:
+    except YandexGPTClientError as error:
         logger.warning("Import assist unavailable: %s", error)
         return _fallback_import_assist_response(error_code=str(error))
     except Exception:
@@ -262,9 +242,11 @@ async def copilot_analysis_assist(payload: ImportAssistRequest) -> ImportAssistR
         return ImportAssistResponse(
             answer=answer,
             model=model,
+            provider="yandex",
+            is_local=False,
             fallback=False,
         )
-    except OllamaClientError as error:
+    except YandexGPTClientError as error:
         logger.warning("Analysis assist unavailable: %s", error)
         return _fallback_analysis_assist_response(error_code=str(error))
     except Exception:

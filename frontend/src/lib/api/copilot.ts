@@ -122,5 +122,5 @@ export async function requestAnalysisAssist(params: {
 }
 
 export function getCopilotStatus() {
-  return apiRequest<CopilotStatusResponse>("/copilot/status", { retry: 0, timeoutMs: 6000 });
+  return apiRequest<CopilotStatusResponse>("/system/ai-status", { retry: 0, timeoutMs: 6000 });
 }

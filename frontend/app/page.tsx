@@ -63,8 +63,8 @@ const story = [
   },
   {
     eyebrow: "Copilot",
-    title: "Локальный помощник объясняет, но не принимает решения за пользователя.",
-    body: "Ollama qwen2.5:7b получает только компактный контекст анализа и отвечает без внешних AI-провайдеров.",
+    title: "AI-помощник объясняет, но не принимает решения за пользователя.",
+    body: "YandexGPT получает только компактный контекст анализа. Полный файл в модель не отправляется.",
     icon: Bot,
     preview: "copilot",
   },
@@ -87,7 +87,7 @@ export default function LandingPage() {
             <div className="text-sm font-semibold">StockPilot AI</div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--line)] bg-[color:var(--surface)]/72 px-3 py-1.5 text-xs text-[color:var(--muted)] shadow-[var(--shadow-sm)] backdrop-blur-2xl">
               <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--success)]" />
-              Локально через Ollama
+              AI через YandexGPT
             </div>
           </header>
 
@@ -99,7 +99,7 @@ export default function LandingPage() {
                 className="mb-6 inline-flex items-center gap-2 rounded-full border border-[color:var(--line)] bg-[color:var(--surface)]/76 px-4 py-2 text-xs font-medium text-[color:var(--muted)] backdrop-blur-2xl"
               >
                 <Sparkles className="h-3.5 w-3.5 text-[color:var(--accent)]" />
-                Локальное AI-рабочее пространство для операционной команды
+                AI-рабочее пространство для операционной команды
               </m.div>
               <m.h1
                 animate={{ opacity: 1, y: 0 }}
@@ -113,7 +113,7 @@ export default function LandingPage() {
                 transition={{ delay: 0.18, duration: 0.72, ease: [0.2, 0.8, 0.2, 1] }}
                 className="mt-6 max-w-3xl text-2xl font-medium leading-tight md:text-3xl"
               >
-                Локальное AI-рабочее пространство для продаж, запасов и закупок.
+                AI-рабочее пространство для продаж, запасов и закупок.
               </m.p>
               <m.div
                 animate={{ opacity: 1, y: 0 }}
@@ -133,7 +133,7 @@ export default function LandingPage() {
                 transition={{ delay: 0.38, duration: 0.72, ease: [0.2, 0.8, 0.2, 1] }}
                 className="mt-7 max-w-2xl text-base leading-7 text-[color:var(--muted)] md:text-lg"
               >
-                Загрузите Excel или CSV — StockPilot поможет подготовить файл, оценит запасы, сформирует закупочный план и объяснит рекомендации локально через Ollama.
+                Загрузите Excel или CSV — StockPilot поможет подготовить файл, оценит запасы, сформирует закупочный план и объяснит рекомендации через AI-помощника.
               </m.p>
             </div>
 
@@ -148,7 +148,7 @@ export default function LandingPage() {
 
           <div className="flex items-center justify-between pb-3 text-xs text-[color:var(--muted)]">
             <span>Прокрутите</span>
-            <span>Данные остаются локально</span>
+            <span>Файл не отправляется целиком в AI</span>
           </div>
         </div>
       </section>
@@ -194,10 +194,10 @@ export default function LandingPage() {
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,color-mix(in_srgb,var(--accent)_18%,transparent),transparent_34%)]" />
           <div className="relative max-w-3xl">
-            <p className="text-sm font-medium text-[color:var(--muted)]">Локально. Из файла. До закупочного решения.</p>
+            <p className="text-sm font-medium text-[color:var(--muted)]">Из файла. До закупочного решения.</p>
             <h2 className="mt-4 text-4xl font-semibold leading-tight md:text-6xl">Откройте рабочее пространство и пройдите путь на демо-файле.</h2>
             <p className="mt-5 text-base leading-7 text-[color:var(--muted)]">
-              StockPilot работает с локальным сервером, Ollama и вашими артефактами анализа. Без внешних AI API и без облачной отправки данных.
+              StockPilot анализирует файл на backend, а AI-помощник получает только агрегированный контекст результата.
             </p>
             <a
               href="/overview"
@@ -231,9 +231,9 @@ function HeroMock() {
         <div className="mb-4 flex items-center justify-between rounded-3xl border border-[color:var(--line)] bg-[color:var(--surface-2)] px-4 py-3">
           <div>
             <p className="text-sm font-semibold">Закупочный фокус</p>
-            <p className="text-xs text-[color:var(--muted)]">пример рабочего экрана · локальный анализ</p>
+            <p className="text-xs text-[color:var(--muted)]">пример рабочего экрана · анализ файла</p>
           </div>
-          <span className="rounded-full bg-[color:var(--success-soft)] px-3 py-1 text-xs text-[color:var(--success)]">локально</span>
+          <span className="rounded-full bg-[color:var(--success-soft)] px-3 py-1 text-xs text-[color:var(--success)]">контекстно</span>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           {[
@@ -273,7 +273,7 @@ function StoryMock({ kind, index }: { kind: (typeof story)[number]["preview"]; i
         <div className="mb-5 flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold">{mockTitles[kind]}</p>
-            <p className="text-xs text-[color:var(--muted)]">шаг {String(index + 1).padStart(2, "0")} · локальный процесс</p>
+            <p className="text-xs text-[color:var(--muted)]">шаг {String(index + 1).padStart(2, "0")} · управляемый процесс</p>
           </div>
           <div className="flex gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--danger)]" />
@@ -301,7 +301,7 @@ const mockTitles: Record<(typeof story)[number]["preview"], string> = {
   planning: "Закупочные решения",
   reliability: "Прогноз и надёжность",
   suppliers: "Ограничения поставщика",
-  copilot: "Локальный Copilot",
+  copilot: "AI Copilot",
   reports: "История и отчёты",
 };
 
@@ -369,7 +369,7 @@ function SummaryMock() {
         <div className="space-y-2 text-sm text-[color:var(--muted)]">
           <p>Проверить товары с высоким риском дефицита.</p>
           <p>Открыть закупочный план и зафиксировать решения.</p>
-          <p>Скачать локальный отчёт для команды.</p>
+          <p>Скачать управленческий отчёт для команды.</p>
         </div>
       </div>
     </div>
@@ -446,7 +446,7 @@ function CopilotMock() {
       <div className="rounded-3xl border border-[color:var(--accent)] bg-[color:var(--accent-soft)] p-4 text-sm text-[color:var(--accent)]">
         Проверьте SKU с низкой надёжностью и позиции, где риск дефицита сочетается с коротким покрытием запасов.
       </div>
-      <PreviewRow icon={<Bot className="h-4 w-4" />} title="Источник ответа" value="локальная Ollama" tone="success" />
+      <PreviewRow icon={<Bot className="h-4 w-4" />} title="Источник ответа" value="YandexGPT" tone="success" />
     </div>
   );
 }

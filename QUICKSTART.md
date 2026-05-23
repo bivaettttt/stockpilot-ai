@@ -22,9 +22,14 @@ npm install
 Root `.env`:
 
 ```bash
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen2.5:7b
-OLLAMA_TIMEOUT_SECONDS=60
+AI_PROVIDER=yandex
+YANDEX_GPT_API_KEY=
+YANDEX_GPT_FOLDER_ID=
+YANDEX_GPT_MODEL=yandexgpt-5-lite
+YANDEX_GPT_BASE_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
+YANDEX_GPT_TIMEOUT_SECONDS=30
+YANDEX_GPT_TEMPERATURE=0.2
+YANDEX_GPT_MAX_TOKENS=1200
 ```
 
 Frontend `frontend/.env.local`:
@@ -33,12 +38,10 @@ Frontend `frontend/.env.local`:
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-## 3. Run Ollama
+## 3. Check YandexGPT config
 
 ```bash
-ollama list
-ollama pull qwen2.5:7b
-ollama run qwen2.5:7b "Привет"
+curl http://127.0.0.1:8000/system/ai-status
 ```
 
 ## 4. Run backend
